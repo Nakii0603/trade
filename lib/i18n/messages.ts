@@ -10,6 +10,7 @@ export type MessageKey =
   | "navAddTrade"
   | "navAnalytics"
   | "navAria"
+  | "apiLoading"
   | "langMn"
   | "langEn"
   | "logTradeTitle"
@@ -114,6 +115,7 @@ const en: Record<MessageKey, string> = {
   navAddTrade: "Add Trade",
   navAnalytics: "Analytics",
   navAria: "Main navigation",
+  apiLoading: "Loading…",
   langMn: "MN",
   langEn: "EN",
   logTradeTitle: "Log trade",
@@ -224,6 +226,7 @@ const mn: Record<MessageKey, string> = {
   navAddTrade: "Арилжаа нэмэх",
   navAnalytics: "Шинжилгээ",
   navAria: "Үндсэн цэс",
+  apiLoading: "Ачаалж байна…",
   langMn: "МН",
   langEn: "EN",
   logTradeTitle: "Арилжаа бүртгэх",
