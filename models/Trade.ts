@@ -1,0 +1,29 @@
+import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
+
+const tradeSchema = new Schema(
+  {
+    session: { type: String, required: true, trim: true },
+    pair: { type: String, required: true, trim: true },
+    side: {
+      type: String,
+      enum: ["BUY", "SELL"],
+      required: true,
+    },
+    entry: { type: Number, required: true },
+    exit: { type: Number, required: true },
+    lot: { type: Number, required: true, min: 0 },
+    profit: { type: Number, required: true },
+    isWin: { type: Boolean, required: true },
+    mood: { type: String, default: "" },
+    createdAt: { type: Date, default: Date.now },
+  },
+  { timestamps: false },
+);
+
+export type TradeDocument = InferSchemaType<typeof tradeSchema> & {
+  _id: mongoose.Types.ObjectId;
+};
+
+export const Trade: Model<TradeDocument> =
+  (mongoose.models.Trade as Model<TradeDocument>) ||
+  mongoose.model<TradeDocument>("Trade", tradeSchema);
