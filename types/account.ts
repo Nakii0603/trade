@@ -6,6 +6,7 @@ export interface AccountDTO {
 }
 
 export interface AccountListItem {
+  _id: string;
   accountId: string;
   accountName: string;
 }

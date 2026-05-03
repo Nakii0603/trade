@@ -184,6 +184,14 @@ async function main() {
       accountName: "Practice",
     },
   ]);
+  const liveAcc = await Account.findOne({ accountIdKey: "live-01" }).lean();
+  const demoAcc = await Account.findOne({ accountIdKey: "demo-01" }).lean();
+  if (!liveAcc?._id || !demoAcc?._id) {
+    throw new Error("Seed: expected accounts live-01 and demo-01");
+  }
+  const liveRef = liveAcc._id as mongoose.Types.ObjectId;
+  const demoRef = demoAcc._id as mongoose.Types.ObjectId;
+
   await Trade.deleteMany({});
   const now = Date.now();
   for (const row of samples) {
@@ -196,8 +204,11 @@ async function main() {
       rest.exit,
       rest.lot,
     );
+    const accountRef = rest.accountId === "demo-01" ? demoRef : liveRef;
     await Trade.create({
       ...rest,
+      accountId: rest.accountId.trim().toLowerCase(),
+      accountRef,
       profit,
       isWin: isWinningTrade(profit),
       createdAt,

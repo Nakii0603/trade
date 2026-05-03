@@ -2,6 +2,7 @@ import { NextResponse } from "next/server";
 import mongoose from "mongoose";
 import { connectDB } from "@/lib/mongodb";
 import { computeProfitUsd, isWinningTrade } from "@/lib/profit";
+import { Account } from "@/models/Account";
 import { Trade } from "@/models/Trade";
 import type { CreateTradeBody, TradeDTO } from "@/types/trade";
 
@@ -9,6 +10,7 @@ export const dynamic = "force-dynamic";
 
 type TradeLean = {
   _id: { toString: () => string };
+  accountRef?: { toString: () => string } | null;
   accountId?: string;
   accountName?: string;
   account?: string;
@@ -26,8 +28,11 @@ type TradeLean = {
 
 function toDTO(doc: TradeLean): TradeDTO {
   const legacyName = doc.account?.trim();
+  const ref =
+    doc.accountRef != null ? doc.accountRef.toString() : undefined;
   return {
     _id: doc._id.toString(),
+    ...(ref ? { accountRef: ref } : {}),
     accountId: doc.accountId?.trim() || "—",
     accountName: doc.accountName?.trim() || legacyName || "—",
     session: doc.session,
@@ -60,6 +65,7 @@ export async function PATCH(
     }
 
     const ex = existing.toObject() as {
+      accountRef?: mongoose.Types.ObjectId;
       accountId?: string;
       accountName?: string;
       account?: string;
@@ -68,14 +74,43 @@ export async function PATCH(
       ex.accountName?.trim() || ex.account?.trim() || "Unknown";
     const fallbackId = ex.accountId?.trim() || "—";
 
-    const accountId =
+    const accountMongoBody =
+      typeof body.accountMongoId === "string"
+        ? body.accountMongoId.trim()
+        : "";
+
+    let accountId =
       typeof body.accountId === "string" && body.accountId.trim()
-        ? body.accountId.trim()
-        : fallbackId;
-    const accountName =
+        ? body.accountId.trim().toLowerCase()
+        : fallbackId.trim().toLowerCase();
+    let accountName =
       typeof body.accountName === "string" && body.accountName.trim()
         ? body.accountName.trim()
         : fallbackName;
+
+    let nextAccountRef: mongoose.Types.ObjectId | undefined = ex.accountRef;
+
+    if (accountMongoBody && mongoose.Types.ObjectId.isValid(accountMongoBody)) {
+      const acc = await Account.findById(accountMongoBody).lean();
+      if (!acc) {
+        return NextResponse.json({ error: "Unknown account" }, { status: 400 });
+      }
+      const row = acc as {
+        _id: mongoose.Types.ObjectId;
+        accountId: string;
+        accountName: string;
+      };
+      nextAccountRef = new mongoose.Types.ObjectId(row._id.toString());
+      accountId = row.accountId.trim().toLowerCase();
+      accountName = row.accountName.trim();
+    } else {
+      const acc = await Account.findOne({ accountIdKey: accountId }).lean();
+      if (acc?._id) {
+        nextAccountRef = new mongoose.Types.ObjectId(
+          (acc._id as mongoose.Types.ObjectId).toString(),
+        );
+      }
+    }
 
     const session = body.session ?? existing.session;
     const pair = body.pair ?? existing.pair;
@@ -96,6 +131,7 @@ export async function PATCH(
       {
         accountId,
         accountName,
+        ...(nextAccountRef ? { accountRef: nextAccountRef } : {}),
         session: session.trim(),
         pair: pair.trim(),
         side,

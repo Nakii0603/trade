@@ -2,6 +2,12 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
 const tradeSchema = new Schema(
   {
+    /** Links this trade to `Account` — preferred for filtering. */
+    accountRef: {
+      type: Schema.Types.ObjectId,
+      ref: "Account",
+      required: false,
+    },
     accountId: { type: String, required: true, trim: true, maxlength: 64 },
     accountName: { type: String, required: true, trim: true, maxlength: 120 },
     session: { type: String, required: true, trim: true },
@@ -21,6 +27,8 @@ const tradeSchema = new Schema(
   },
   { timestamps: false },
 );
+
+tradeSchema.index({ accountRef: 1 });
 
 export type TradeDocument = InferSchemaType<typeof tradeSchema> & {
   _id: mongoose.Types.ObjectId;

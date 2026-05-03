@@ -99,23 +99,118 @@ function sessionTotals(trades: TradeDTO[]) {
   }));
 }
 
+/** Same logical key as Mongo `accountIdKey` — filters must ignore ID casing/spacing. */
+function accountIdentityKey(accountId: string | undefined | null): string {
+  return String(accountId ?? "").trim().toLowerCase();
+}
+
+function accountDisplayNameKey(name: string | undefined | null): string {
+  return String(name ?? "").trim().toLowerCase();
+}
+
+function isMissingAccountId(accountId: string): boolean {
+  const t = accountId.trim();
+  return t === "" || t === "—";
+}
+
+/** Select value: `mdb:<Account._id>` or `lid:<normalized account id>`. */
+type AnalyticsAccountOption = {
+  filterValue: string;
+  idKey: string;
+  displayId: string;
+  accountName: string;
+  mongoId?: string;
+};
+
+function tradeMatchesSelectedAccount(
+  t: TradeDTO,
+  selected: AnalyticsAccountOption,
+): boolean {
+  if (
+    !isMissingAccountId(t.accountId) &&
+    accountIdentityKey(t.accountId) === selected.idKey
+  ) {
+    return true;
+  }
+  if (
+    isMissingAccountId(t.accountId) &&
+    accountDisplayNameKey(t.accountName) ===
+      accountDisplayNameKey(selected.accountName) &&
+    accountDisplayNameKey(t.accountName) !== ""
+  ) {
+    return true;
+  }
+  if (
+    !isMissingAccountId(t.accountName) &&
+    accountIdentityKey(t.accountName) === selected.idKey
+  ) {
+    return true;
+  }
+  if (
+    accountDisplayNameKey(t.accountName) ===
+      accountDisplayNameKey(selected.accountName) &&
+    accountDisplayNameKey(t.accountName) !== ""
+  ) {
+    return true;
+  }
+  return false;
+}
+
+function parseAccountFilterValue(
+  raw: string,
+):
+  | { mode: "all" }
+  | { mode: "mongo"; mongoId: string }
+  | { mode: "lid"; idKey: string } {
+  const v = raw.trim();
+  if (!v) return { mode: "all" };
+  if (v.startsWith("mdb:")) {
+    const mongoId = v.slice(4).trim();
+    return mongoId ? { mode: "mongo", mongoId } : { mode: "all" };
+  }
+  if (v.startsWith("lid:")) {
+    const idKey = v.slice(4).trim();
+    return idKey ? { mode: "lid", idKey } : { mode: "all" };
+  }
+  return { mode: "lid", idKey: accountIdentityKey(v) };
+}
+
 function mergeAccountOptions(
   api: AccountListItem[],
   trades: TradeDTO[],
-): AccountListItem[] {
-  const byId = new Map<string, string>();
+): AnalyticsAccountOption[] {
+  const byKey = new Map<
+    string,
+    { displayId: string; accountName: string; mongoId?: string }
+  >();
   for (const a of api) {
-    const id = a.accountId.trim();
-    if (id) byId.set(id, a.accountName.trim() || id);
+    if (isMissingAccountId(a.accountId)) continue;
+    const idKey = accountIdentityKey(a.accountId);
+    const displayId = a.accountId.trim();
+    const name = a.accountName.trim() || displayId;
+    const mongoId =
+      typeof a._id === "string" && a._id.trim() !== "" ? a._id.trim() : undefined;
+    byKey.set(idKey, { displayId, accountName: name, mongoId });
   }
   for (const t of trades) {
-    const id = t.accountId.trim();
-    if (!id || id === "—") continue;
-    if (!byId.has(id)) byId.set(id, t.accountName.trim() || id);
+    if (isMissingAccountId(t.accountId)) continue;
+    const idKey = accountIdentityKey(t.accountId);
+    if (byKey.has(idKey)) continue;
+    const displayId = t.accountId.trim();
+    byKey.set(idKey, {
+      displayId,
+      accountName: t.accountName.trim() || displayId,
+    });
   }
-  return [...byId.entries()]
+  return [...byKey.entries()]
     .sort(([a], [b]) => a.localeCompare(b))
-    .map(([accountId, accountName]) => ({ accountId, accountName }));
+    .map(([idKey, row]) => ({
+      idKey,
+      displayId: row.displayId,
+      accountName: row.accountName,
+      mongoId: row.mongoId,
+      filterValue: row.mongoId ? `mdb:${row.mongoId}` : `lid:${idKey}`,
+    }));
 }
 
 export function AnalyticsPanel({
@@ -170,7 +265,7 @@ export function AnalyticsPanel({
   useEffect(() => {
     if (
       accountFilter &&
-      !accountOptions.some((o) => o.accountId === accountFilter)
+      !accountOptions.some((o) => o.filterValue === accountFilter)
     ) {
       // eslint-disable-next-line react-hooks/set-state-in-effect -- clear stale filter when options shrink
       setAccountFilter("");
@@ -178,9 +273,28 @@ export function AnalyticsPanel({
   }, [accountFilter, accountOptions]);
 
   const filteredTrades = useMemo(() => {
-    if (!accountFilter.trim()) return trades;
-    return trades.filter((t) => t.accountId.trim() === accountFilter);
-  }, [trades, accountFilter]);
+    const parsed = parseAccountFilterValue(accountFilter);
+    if (parsed.mode === "all") return trades;
+
+    const selected = accountOptions.find(
+      (o) => o.filterValue === accountFilter,
+    );
+
+    if (parsed.mode === "mongo") {
+      const { mongoId } = parsed;
+      return trades.filter((t) => {
+        if (t.accountRef === mongoId) return true;
+        if (selected) return tradeMatchesSelectedAccount(t, selected);
+        return false;
+      });
+    }
+
+    const idKey = parsed.idKey;
+    const sel =
+      selected ?? accountOptions.find((o) => o.idKey === idKey) ?? null;
+    if (!sel) return [];
+    return trades.filter((t) => tradeMatchesSelectedAccount(t, sel));
+  }, [trades, accountFilter, accountOptions]);
 
   const metrics = useMemo(() => {
     const total = filteredTrades.length;
@@ -243,8 +357,8 @@ export function AnalyticsPanel({
   }, [metrics.bestSession, locale]);
 
   const accountSelectLabel = accountFilter
-    ? accountOptions.find((o) => o.accountId === accountFilter)?.accountName ??
-      accountFilter
+    ? accountOptions.find((o) => o.filterValue === accountFilter)
+        ?.accountName ?? accountFilter
     : null;
 
   const card =
@@ -271,23 +385,21 @@ export function AnalyticsPanel({
           {tr("analyticsTitle")}
         </h2>
         <div className="flex flex-wrap items-center gap-2 sm:gap-3">
-          <label className="flex min-w-0 flex-1 flex-col gap-1 sm:flex-initial sm:min-w-[12rem]">
-            <span className="text-[10px] font-medium uppercase tracking-wide text-zinc-500 sm:text-xs">
-              {tr("accountLabel")}
-            </span>
+          <div className="flex min-w-0 flex-1 sm:flex-initial sm:min-w-[12rem]">
             <select
+              aria-label={tr("accountLabel")}
               value={accountFilter}
               onChange={(e) => setAccountFilter(e.target.value)}
               className="tap-target w-full min-w-0 rounded-lg border border-zinc-700 bg-zinc-950 px-3 py-2 text-sm text-zinc-100 outline-none ring-zinc-600 focus:ring-2 sm:min-w-[14rem]"
             >
               <option value="">{tr("allAccounts")}</option>
               {accountOptions.map((a) => (
-                <option key={a.accountId} value={a.accountId}>
-                  {a.accountName} ({a.accountId})
+                <option key={a.filterValue} value={a.filterValue}>
+                  {a.accountName} ({a.displayId})
                 </option>
               ))}
             </select>
-          </label>
+          </div>
           <div className="flex w-full items-end justify-end sm:w-auto sm:pb-0.5">
             <button
               type="button"

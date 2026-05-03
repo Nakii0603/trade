@@ -2,6 +2,8 @@ export type Side = "BUY" | "SELL";
 
 export interface TradeDTO {
   _id: string;
+  /** Set when trade is linked to an Account document in MongoDB. */
+  accountRef?: string;
   accountId: string;
   accountName: string;
   session: string;
@@ -17,6 +19,8 @@ export interface TradeDTO {
 }
 
 export interface CreateTradeBody {
+  /** Preferred — resolves `accountId` / `accountName` from Account. */
+  accountMongoId?: string;
   accountId: string;
   accountName: string;
   session: string;

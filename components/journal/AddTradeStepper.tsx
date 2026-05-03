@@ -64,7 +64,7 @@ function saveExtraPairs(pairs: string[]) {
   localStorage.setItem(PAIRS_KEY, JSON.stringify(pairs));
 }
 
-type SavedAccount = { accountId: string; accountName: string };
+type SavedAccount = { _id?: string; accountId: string; accountName: string };
 
 /** Legacy browser storage — migrated once into MongoDB when API list is empty. */
 const SAVED_ACCOUNTS_KEY = "trade_journal_saved_accounts_v1";
@@ -103,7 +103,9 @@ async function fetchAccountList(): Promise<SavedAccount[]> {
       row !== null &&
       typeof row === "object" &&
       typeof (row as SavedAccount).accountId === "string" &&
-      typeof (row as SavedAccount).accountName === "string",
+      typeof (row as SavedAccount).accountName === "string" &&
+      ((row as SavedAccount)._id === undefined ||
+        typeof (row as SavedAccount)._id === "string"),
   );
 }
 
@@ -371,10 +373,13 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
         setSubmitting(false);
         return;
       }
+      const mongoId =
+        typeof acct._id === "string" && acct._id.trim() ? acct._id.trim() : "";
       const res = await fetch("/api/trades", {
         method: "POST",
         headers: { "Content-Type": "application/json" },
         body: JSON.stringify({
+          ...(mongoId ? { accountMongoId: mongoId } : {}),
           accountId: acct.accountId.trim(),
           accountName: acct.accountName.trim(),
           session: sessionValue,

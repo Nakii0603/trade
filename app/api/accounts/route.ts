@@ -6,10 +6,12 @@ import type { AccountListItem } from "@/types/account";
 export const dynamic = "force-dynamic";
 
 function toListItem(doc: {
+  _id: { toString: () => string };
   accountId: string;
   accountName: string;
 }): AccountListItem {
   return {
+    _id: doc._id.toString(),
     accountId: doc.accountId,
     accountName: doc.accountName,
   };
@@ -22,7 +24,15 @@ export async function GET() {
       .sort({ accountName: 1, accountId: 1 })
       .lean();
     return NextResponse.json(
-      rows.map((r) => toListItem(r as { accountId: string; accountName: string })),
+      rows.map((r) =>
+        toListItem(
+          r as {
+            _id: { toString: () => string };
+            accountId: string;
+            accountName: string;
+          },
+        ),
+      ),
     );
   } catch (e) {
     console.error(e);
