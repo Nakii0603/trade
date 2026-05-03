@@ -451,8 +451,8 @@ export function AnalyticsPanel({
         />
       </div>
 
-      <div className="grid gap-5 lg:grid-cols-2 lg:items-start lg:gap-4">
-        <div className={card}>
+      <div className="grid gap-5 lg:grid-cols-2 lg:gap-4">
+        <div className={`${card} flex h-full flex-col`}>
           <div className="flex flex-col gap-3 sm:flex-row sm:flex-wrap sm:items-center sm:justify-between">
             <p className="text-sm font-medium text-zinc-300 sm:text-base">
               {tr("profitOverTime")}
@@ -520,7 +520,7 @@ export function AnalyticsPanel({
           </div>
         </div>
 
-        <div className={card}>
+        <div className={`${card} flex h-full flex-col`}>
           <p className="text-sm font-medium text-zinc-300 sm:text-base">
             {tr("sessionPerformance")}
           </p>

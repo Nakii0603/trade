@@ -120,7 +120,7 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
   const [addFormOpen, setAddFormOpen] = useState(false);
   const [addDraftName, setAddDraftName] = useState("");
   const [addDraftId, setAddDraftId] = useState("");
-  const [sessionPreset, setSessionPreset] = useState<string>("London");
+  const [sessionPreset, setSessionPreset] = useState<string>("New York");
   const [manualTime, setManualTime] = useState("");
   const [useManualSession, setUseManualSession] = useState(false);
   const [pair, setPair] = useState("XAUUSD");
@@ -234,7 +234,7 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
     setAddDraftName("");
     setAddDraftId("");
     setAddFormOpen(false);
-    setSessionPreset("London");
+    setSessionPreset("New York");
     setManualTime("");
     setUseManualSession(false);
     setPair("XAUUSD");
