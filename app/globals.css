@@ -15,14 +15,22 @@
 
 html {
   color-scheme: dark;
+  overflow-x: clip;
 }
 
 body {
   background: var(--background);
   color: var(--foreground);
   font-family: var(--font-geist-sans), system-ui, sans-serif;
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
 }
 
 .safe-area-pb {
   padding-bottom: max(0.75rem, env(safe-area-inset-bottom, 0px));
+}
+
+.tap-target {
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }

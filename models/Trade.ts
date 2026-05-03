@@ -2,6 +2,8 @@ import mongoose, { Schema, type InferSchemaType, type Model } from "mongoose";
 
 const tradeSchema = new Schema(
   {
+    accountId: { type: String, required: true, trim: true, maxlength: 64 },
+    accountName: { type: String, required: true, trim: true, maxlength: 120 },
     session: { type: String, required: true, trim: true },
     pair: { type: String, required: true, trim: true },
     side: {

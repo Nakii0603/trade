@@ -6,8 +6,12 @@ import type { CreateTradeBody, TradeDTO } from "@/types/trade";
 
 export const dynamic = "force-dynamic";
 
-function toDTO(doc: {
+type TradeLean = {
   _id: { toString: () => string };
+  accountId?: string;
+  accountName?: string;
+  /** @deprecated legacy field */
+  account?: string;
   session: string;
   pair: string;
   side: "BUY" | "SELL";
@@ -18,9 +22,14 @@ function toDTO(doc: {
   isWin: boolean;
   mood?: string;
   createdAt: Date;
-}): TradeDTO {
+};
+
+function toDTO(doc: TradeLean): TradeDTO {
+  const legacyName = doc.account?.trim();
   return {
     _id: doc._id.toString(),
+    accountId: doc.accountId?.trim() || "—",
+    accountName: doc.accountName?.trim() || legacyName || "—",
     session: doc.session,
     pair: doc.pair,
     side: doc.side,
@@ -47,7 +56,7 @@ export async function GET(request: Request) {
       if (to) (q.createdAt as Record<string, Date>).$lte = new Date(to);
     }
     const trades = await Trade.find(q).sort({ createdAt: -1 }).lean();
-    return NextResponse.json(trades.map((t) => toDTO(t as Parameters<typeof toDTO>[0])));
+    return NextResponse.json(trades.map((t) => toDTO(t as TradeLean)));
   } catch (e) {
     console.error(e);
     return NextResponse.json(
@@ -60,9 +69,21 @@ export async function GET(request: Request) {
 export async function POST(request: Request) {
   try {
     const body = (await request.json()) as Partial<CreateTradeBody>;
-    const { session, pair, side, entry, exit: exitPrice, lot, mood } = body;
+    const {
+      accountId,
+      accountName,
+      session,
+      pair,
+      side,
+      entry,
+      exit: exitPrice,
+      lot,
+      mood,
+    } = body;
 
     if (
+      !accountId?.trim() ||
+      !accountName?.trim() ||
       !session ||
       !pair ||
       (side !== "BUY" && side !== "SELL") ||
@@ -81,6 +102,8 @@ export async function POST(request: Request) {
     const isWin = isWinningTrade(profit);
 
     const doc = await Trade.create({
+      accountId: accountId.trim(),
+      accountName: accountName.trim(),
       session: session.trim(),
       pair: pair.trim(),
       side,
@@ -95,6 +118,8 @@ export async function POST(request: Request) {
     return NextResponse.json(
       toDTO({
         _id: doc._id,
+        accountId: doc.accountId,
+        accountName: doc.accountName,
         session: doc.session,
         pair: doc.pair,
         side: doc.side,

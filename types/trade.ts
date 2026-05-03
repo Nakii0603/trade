@@ -2,6 +2,8 @@ export type Side = "BUY" | "SELL";
 
 export interface TradeDTO {
   _id: string;
+  accountId: string;
+  accountName: string;
   session: string;
   pair: string;
   side: Side;
@@ -15,6 +17,8 @@ export interface TradeDTO {
 }
 
 export interface CreateTradeBody {
+  accountId: string;
+  accountName: string;
   session: string;
   pair: string;
   side: Side;

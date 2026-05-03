@@ -3,9 +3,12 @@ config({ path: ".env.local" });
 config({ path: ".env" });
 import mongoose from "mongoose";
 import { computeProfitUsd, isWinningTrade } from "../lib/profit";
+import { Account } from "../models/Account";
 import { Trade } from "../models/Trade";
 
 const samples: Array<{
+  accountId: string;
+  accountName: string;
   session: string;
   pair: string;
   side: "BUY" | "SELL";
@@ -16,6 +19,8 @@ const samples: Array<{
   daysAgo: number;
 }> = [
   {
+    accountId: "live-01",
+    accountName: "Primary",
     session: "London",
     pair: "XAUUSD",
     side: "BUY",
@@ -26,6 +31,8 @@ const samples: Array<{
     daysAgo: 0,
   },
   {
+    accountId: "live-01",
+    accountName: "Primary",
     session: "New York",
     pair: "XAUUSD",
     side: "SELL",
@@ -36,7 +43,9 @@ const samples: Array<{
     daysAgo: 0,
   },
   {
-    session: "Asia",
+    accountId: "demo-01",
+    accountName: "Practice",
+    session: "Tokyo (Asia)",
     pair: "XAGUSD",
     side: "BUY",
     entry: 28.4,
@@ -46,6 +55,8 @@ const samples: Array<{
     daysAgo: 1,
   },
   {
+    accountId: "live-01",
+    accountName: "Primary",
     session: "London",
     pair: "XAUUSD",
     side: "BUY",
@@ -56,7 +67,9 @@ const samples: Array<{
     daysAgo: 2,
   },
   {
-    session: "Asia",
+    accountId: "live-01",
+    accountName: "Primary",
+    session: "Sydney",
     pair: "XAUUSD",
     side: "SELL",
     entry: 2315,
@@ -66,6 +79,8 @@ const samples: Array<{
     daysAgo: 3,
   },
   {
+    accountId: "demo-01",
+    accountName: "Practice",
     session: "New York",
     pair: "XAGUSD",
     side: "BUY",
@@ -76,6 +91,8 @@ const samples: Array<{
     daysAgo: 4,
   },
   {
+    accountId: "live-01",
+    accountName: "Primary",
     session: "London",
     pair: "XAUUSD",
     side: "BUY",
@@ -86,6 +103,8 @@ const samples: Array<{
     daysAgo: 5,
   },
   {
+    accountId: "live-01",
+    accountName: "Primary",
     session: "New York",
     pair: "XAUUSD",
     side: "SELL",
@@ -96,7 +115,9 @@ const samples: Array<{
     daysAgo: 6,
   },
   {
-    session: "Asia",
+    accountId: "live-01",
+    accountName: "Primary",
+    session: "Tokyo (Asia)",
     pair: "XAUUSD",
     side: "BUY",
     entry: 2288,
@@ -106,6 +127,8 @@ const samples: Array<{
     daysAgo: 8,
   },
   {
+    accountId: "live-01",
+    accountName: "Primary",
     session: "London",
     pair: "XAUUSD",
     side: "BUY",
@@ -116,6 +139,8 @@ const samples: Array<{
     daysAgo: 10,
   },
   {
+    accountId: "demo-01",
+    accountName: "Practice",
     session: "New York",
     pair: "XAUUSD",
     side: "SELL",
@@ -126,7 +151,9 @@ const samples: Array<{
     daysAgo: 12,
   },
   {
-    session: "Asia",
+    accountId: "live-01",
+    accountName: "Primary",
+    session: "Sydney",
     pair: "XAUUSD",
     side: "BUY",
     entry: 2265,
@@ -144,6 +171,19 @@ async function main() {
     process.exit(1);
   }
   await mongoose.connect(uri);
+  await Account.deleteMany({});
+  await Account.insertMany([
+    {
+      accountIdKey: "live-01",
+      accountId: "live-01",
+      accountName: "Primary",
+    },
+    {
+      accountIdKey: "demo-01",
+      accountId: "demo-01",
+      accountName: "Practice",
+    },
+  ]);
   await Trade.deleteMany({});
   const now = Date.now();
   for (const row of samples) {

@@ -7,8 +7,11 @@ import type { CreateTradeBody, TradeDTO } from "@/types/trade";
 
 export const dynamic = "force-dynamic";
 
-function toDTO(doc: {
+type TradeLean = {
   _id: { toString: () => string };
+  accountId?: string;
+  accountName?: string;
+  account?: string;
   session: string;
   pair: string;
   side: "BUY" | "SELL";
@@ -19,9 +22,14 @@ function toDTO(doc: {
   isWin: boolean;
   mood?: string;
   createdAt: Date;
-}): TradeDTO {
+};
+
+function toDTO(doc: TradeLean): TradeDTO {
+  const legacyName = doc.account?.trim();
   return {
     _id: doc._id.toString(),
+    accountId: doc.accountId?.trim() || "—",
+    accountName: doc.accountName?.trim() || legacyName || "—",
     session: doc.session,
     pair: doc.pair,
     side: doc.side,
@@ -51,6 +59,24 @@ export async function PATCH(
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
 
+    const ex = existing.toObject() as {
+      accountId?: string;
+      accountName?: string;
+      account?: string;
+    };
+    const fallbackName =
+      ex.accountName?.trim() || ex.account?.trim() || "Unknown";
+    const fallbackId = ex.accountId?.trim() || "—";
+
+    const accountId =
+      typeof body.accountId === "string" && body.accountId.trim()
+        ? body.accountId.trim()
+        : fallbackId;
+    const accountName =
+      typeof body.accountName === "string" && body.accountName.trim()
+        ? body.accountName.trim()
+        : fallbackName;
+
     const session = body.session ?? existing.session;
     const pair = body.pair ?? existing.pair;
     const side =
@@ -68,6 +94,8 @@ export async function PATCH(
     const doc = await Trade.findByIdAndUpdate(
       id,
       {
+        accountId,
+        accountName,
         session: session.trim(),
         pair: pair.trim(),
         side,
@@ -84,7 +112,7 @@ export async function PATCH(
     if (!doc) {
       return NextResponse.json({ error: "Not found" }, { status: 404 });
     }
-    return NextResponse.json(toDTO(doc as Parameters<typeof toDTO>[0]));
+    return NextResponse.json(toDTO(doc as TradeLean));
   } catch (e) {
     console.error(e);
     return NextResponse.json(
