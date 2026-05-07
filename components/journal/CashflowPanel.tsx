@@ -117,7 +117,7 @@ export function CashflowPanel({ refreshKey }: { refreshKey: number }) {
       if (row.type === "DEPOSIT") deposit += row.amount;
       else withdrawal += row.amount;
     }
-    return { deposit, withdrawal, net: deposit - withdrawal };
+    return { deposit, withdrawal, net: withdrawal - deposit };
   }, [dateFilteredRows]);
 
   const card =
