@@ -613,6 +613,7 @@ export function AnalyticsPanel({
           )}
           </ul>
         </div>
+
       </div>
     </div>
   );

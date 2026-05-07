@@ -6,9 +6,10 @@ import { useState } from "react";
 import { AddTradeStepper } from "./AddTradeStepper";
 import { AnalyticsPanel } from "./AnalyticsPanel";
 import { BottomNav } from "./BottomNav";
+import { CashflowPanel } from "./CashflowPanel";
 import { LanguageToggle } from "./LanguageToggle";
 
-type Tab = "add" | "analytics";
+type Tab = "add" | "analytics" | "cashflow";
 
 export function TradingJournal() {
   const [tab, setTab] = useState<Tab>("add");
@@ -38,13 +39,11 @@ export function TradingJournal() {
       <main
         className={`${SHELL} ${SHELL_PAD_X} flex-1 overflow-y-auto overflow-x-hidden pb-28 pt-5 sm:pb-32 sm:pt-6 lg:pb-40 lg:pt-8`}
       >
-        {tab === "add" ? (
-          <AddTradeStepper
-            onSaved={() => setRefreshKey((k) => k + 1)}
-          />
-        ) : (
-          <AnalyticsPanel refreshKey={refreshKey} />
+        {tab === "add" && (
+          <AddTradeStepper onSaved={() => setRefreshKey((k) => k + 1)} />
         )}
+        {tab === "analytics" && <AnalyticsPanel refreshKey={refreshKey} />}
+        {tab === "cashflow" && <CashflowPanel refreshKey={refreshKey} />}
       </main>
 
       <BottomNav active={tab} onChange={setTab} />

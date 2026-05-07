@@ -9,6 +9,7 @@ export type MessageKey =
   | "journalSubtitle"
   | "navAddTrade"
   | "navAnalytics"
+  | "navCashflow"
   | "navAria"
   | "apiLoading"
   | "langMn"
@@ -17,6 +18,10 @@ export type MessageKey =
   | "stepProgress"
   | "accountsHeading"
   | "accountsHint"
+  | "entryType"
+  | "entryTrade"
+  | "entryDeposit"
+  | "entryWithdrawal"
   | "yourAccounts"
   | "continue"
   | "close"
@@ -43,6 +48,11 @@ export type MessageKey =
   | "pairHeading"
   | "pairGold"
   | "pairSilver"
+  | "amountUsd"
+  | "entryDate"
+  | "depositAmount"
+  | "withdrawAmount"
+  | "noteOptional"
   | "back"
   | "next"
   | "submit"
@@ -58,6 +68,7 @@ export type MessageKey =
   | "errSaveAccount"
   | "errSaveAccountDb"
   | "errTradeSave"
+  | "errCashAmount"
   | "sessionHoursTokyo"
   | "sessionHoursLondon"
   | "sessionHoursNewYork"
@@ -102,6 +113,13 @@ export type MessageKey =
   | "recentTrades"
   | "recentNoFiltered"
   | "recentNoTrades"
+  | "cashHistory"
+  | "cashAll"
+  | "cashNoRows"
+  | "noNote"
+  | "dateFrom"
+  | "dateTo"
+  | "clearDate"
   | "chartCumulative"
   | "bucketTokyo"
   | "bucketLondon"
@@ -114,6 +132,7 @@ const en: Record<MessageKey, string> = {
   journalSubtitle: "Gold & silver · fast daily logging",
   navAddTrade: "Add Trade",
   navAnalytics: "Analytics",
+  navCashflow: "Deposit/Withdraw",
   navAria: "Main navigation",
   apiLoading: "Loading…",
   langMn: "MN",
@@ -123,6 +142,10 @@ const en: Record<MessageKey, string> = {
   accountsHeading: "Accounts",
   accountsHint:
     "Choose who this trade is for. Account IDs must be unique.",
+  entryType: "Entry type",
+  entryTrade: "Trade",
+  entryDeposit: "Deposit",
+  entryWithdrawal: "Withdrawal",
   yourAccounts: "Your accounts",
   continue: "Continue",
   close: "Close",
@@ -149,6 +172,11 @@ const en: Record<MessageKey, string> = {
   pairHeading: "Pair",
   pairGold: "Gold",
   pairSilver: "Silver",
+  amountUsd: "Amount (USD)",
+  entryDate: "Date",
+  depositAmount: "Deposit details",
+  withdrawAmount: "Withdrawal details",
+  noteOptional: "Note (optional)",
   back: "Back",
   next: "Next",
   submit: "Submit",
@@ -164,6 +192,7 @@ const en: Record<MessageKey, string> = {
   errSaveAccount: "Could not save account.",
   errSaveAccountDb: "Could not save account. Check MongoDB connection.",
   errTradeSave: "Save failed",
+  errCashAmount: "Enter a valid amount.",
   sessionHoursTokyo: "08:00 – 17:00 (local)",
   sessionHoursLondon:
     "15:00 – 00:00 (winter) · 16:00 – 01:00 (summer, DST)",
@@ -212,6 +241,13 @@ const en: Record<MessageKey, string> = {
   recentNoFiltered:
     'No trades for this account in the loaded data. Try "All accounts" or add a trade for this account.',
   recentNoTrades: "Log your first trade in Add Trade.",
+  cashHistory: "Deposit / Withdrawal history",
+  cashAll: "All",
+  cashNoRows: "No deposit or withdrawal records yet.",
+  noNote: "No note",
+  dateFrom: "From",
+  dateTo: "To",
+  clearDate: "Clear",
   chartCumulative: "Cumulative",
   bucketTokyo: "Tokyo (Asia)",
   bucketLondon: "London",
@@ -225,6 +261,7 @@ const mn: Record<MessageKey, string> = {
   journalSubtitle: "Алт, мөнгө · хурдан өдрийн бүртгэл",
   navAddTrade: "Арилжаа нэмэх",
   navAnalytics: "Шинжилгээ",
+  navCashflow: "Орлого/Зарлага",
   navAria: "Үндсэн цэс",
   apiLoading: "Ачаалж байна…",
   langMn: "МН",
@@ -234,6 +271,10 @@ const mn: Record<MessageKey, string> = {
   accountsHeading: "Данснууд",
   accountsHint:
     "Энэ арилжаа хэнд зориулагдсаныг сонгоно уу. Дансны ID давхцахгүй байх ёстой.",
+  entryType: "Бичилтийн төрөл",
+  entryTrade: "Арилжаа",
+  entryDeposit: "Орлого (Deposit)",
+  entryWithdrawal: "Зарлага (Withdrawal)",
   yourAccounts: "Таны данснууд",
   continue: "Үргэлжлүүлэх",
   close: "Хаах",
@@ -260,6 +301,11 @@ const mn: Record<MessageKey, string> = {
   pairHeading: "Хослол",
   pairGold: "Алт",
   pairSilver: "Мөнгө",
+  amountUsd: "Дүн (USD)",
+  entryDate: "Огноо",
+  depositAmount: "Орлогын мэдээлэл",
+  withdrawAmount: "Зарлагын мэдээлэл",
+  noteOptional: "Тайлбар (сонголттой)",
   back: "Буцах",
   next: "Дараах",
   submit: "Илгээх",
@@ -275,6 +321,7 @@ const mn: Record<MessageKey, string> = {
   errSaveAccount: "Данс хадгалагдсангүй.",
   errSaveAccountDb: "Данс хадгалагдсангүй. MongoDB холболтоо шалгана уу.",
   errTradeSave: "Хадгалалт амжилтгүй",
+  errCashAmount: "Зөв дүн оруулна уу.",
   sessionHoursTokyo: "08:00 – 17:00 (орон нутгийн)",
   sessionHoursLondon:
     "15:00 – 00:00 (өвөл) · 16:00 – 01:00 (зун, DST)",
@@ -323,6 +370,13 @@ const mn: Record<MessageKey, string> = {
   recentNoFiltered:
     "Энэ дансанд ачаалсан өгөгдөлд арилжаа алга. «Бүх данс» сонгох эсвэл энэ дансанд арилжаа нэмнэ үү.",
   recentNoTrades: "Эхний арилжаагаа «Арилжаа нэмэх»-ээс бүртгэнэ үү.",
+  cashHistory: "Орлого / зарлагын түүх",
+  cashAll: "Бүгд",
+  cashNoRows: "Одоогоор орлого эсвэл зарлагын бичилт алга.",
+  noNote: "Тайлбаргүй",
+  dateFrom: "Эхлэх",
+  dateTo: "Дуусах",
+  clearDate: "Цэвэрлэх",
   chartCumulative: "Нийлбэр",
   bucketTokyo: "Токио (Ази)",
   bucketLondon: "Лондон",

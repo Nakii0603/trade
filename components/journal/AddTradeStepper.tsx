@@ -4,6 +4,7 @@ import { AnimatePresence, motion } from "framer-motion";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import type { MessageKey } from "@/lib/i18n/messages";
+import type { CashFlowType } from "@/types/cashflow";
 import type { Side } from "@/types/trade";
 
 /** `storageId` is persisted on the trade; labels come from i18n keys. */
@@ -43,6 +44,8 @@ const PAIR_ROWS: readonly { value: string; labelKey: MessageKey }[] = [
   { value: "XAUUSD", labelKey: "pairGold" },
   { value: "XAGUSD", labelKey: "pairSilver" },
 ];
+
+type EntryKind = "TRADE" | CashFlowType;
 
 const PAIRS_KEY = "trade_journal_pairs";
 
@@ -112,6 +115,7 @@ async function fetchAccountList(): Promise<SavedAccount[]> {
 export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
   const { t, intlLocale } = useLanguage();
   const [step, setStep] = useState(1);
+  const [entryKind, setEntryKind] = useState<EntryKind>("TRADE");
   const [savedAccounts, setSavedAccounts] = useState<SavedAccount[]>([]);
   /** Lowercase account ID key for the trade + dropdown. */
   const [selectedAccountKey, setSelectedAccountKey] = useState<string | null>(
@@ -131,9 +135,15 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
   const [exit, setExit] = useState("");
   const [lot, setLot] = useState("");
   const [mood, setMood] = useState("");
+  const [cashAmount, setCashAmount] = useState("");
+  const [cashDate, setCashDate] = useState("");
+  const [cashNote, setCashNote] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
+
+  const isTradeFlow = entryKind === "TRADE";
+  const totalSteps = isTradeFlow ? 5 : 2;
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect -- hydrate pairs + load accounts from API
@@ -231,6 +241,7 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
 
   const reset = useCallback(() => {
     setStep(1);
+    setEntryKind("TRADE");
     setAddDraftName("");
     setAddDraftId("");
     setAddFormOpen(false);
@@ -244,6 +255,9 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
     setExit("");
     setLot("");
     setMood("");
+    setCashAmount("");
+    setCashDate("");
+    setCashNote("");
     setError(null);
     setSuccess(false);
     setSelectedAccountKey((prev) => {
@@ -331,6 +345,17 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
       setError(t("errSelectAccount"));
       return;
     }
+    if (!isTradeFlow && step === 2) {
+      const amount = Number(cashAmount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setError(t("errCashAmount"));
+        return;
+      }
+    }
+    if (!isTradeFlow) {
+      setStep((s) => Math.min(totalSteps, s + 1));
+      return;
+    }
     if (step === 2) {
       if (!tradeAccount) {
         setError(t("errSelectAccountTrade"));
@@ -353,11 +378,59 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
         return;
       }
     }
-    setStep((s) => Math.min(5, s + 1));
+    setStep((s) => Math.min(totalSteps, s + 1));
   };
 
   const submit = async () => {
     setError(null);
+    if (!isTradeFlow) {
+      const amount = Number(cashAmount);
+      if (!Number.isFinite(amount) || amount <= 0) {
+        setError(t("errCashAmount"));
+        return;
+      }
+      setSubmitting(true);
+      try {
+        const acct = tradeAccount;
+        if (!acct) {
+          setError(t("errSelectAccountTrade"));
+          setSubmitting(false);
+          return;
+        }
+        const mongoId =
+          typeof acct._id === "string" && acct._id.trim() ? acct._id.trim() : "";
+        const res = await fetch("/api/cashflows", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            ...(mongoId ? { accountMongoId: mongoId } : {}),
+            accountId: acct.accountId.trim(),
+            accountName: acct.accountName.trim(),
+            type: entryKind,
+            amount,
+            ...(cashDate
+              ? { createdAt: new Date(`${cashDate}T12:00:00`).toISOString() }
+              : {}),
+            note: cashNote.trim() || undefined,
+          }),
+        });
+        if (!res.ok) {
+          const j = await res.json().catch(() => ({}));
+          throw new Error((j as { error?: string }).error || t("errTradeSave"));
+        }
+        setSuccess(true);
+        onSaved();
+        setTimeout(() => {
+          reset();
+        }, 900);
+      } catch (e) {
+        setError(e instanceof Error ? e.message : t("errTradeSave"));
+      } finally {
+        setSubmitting(false);
+      }
+      return;
+    }
+
     const lotN = Number(lot);
     if (!Number.isFinite(lotN) || lotN <= 0) {
       setError(t("errLot"));
@@ -426,11 +499,11 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
           {t("logTradeTitle")}
         </h2>
         <span className="text-xs font-medium uppercase tracking-wider text-zinc-500">
-          {t("stepProgress")} {step} / 5
+          {t("stepProgress")} {step} / {totalSteps}
         </span>
       </div>
       <div className="flex gap-1.5">
-        {[1, 2, 3, 4, 5].map((i) => (
+        {Array.from({ length: totalSteps }, (_, idx) => idx + 1).map((i) => (
           <div
             key={i}
             className={`h-1 flex-1 rounded-full transition-colors ${
@@ -453,6 +526,37 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
             >
               <p className="text-sm text-zinc-400">{t("accountsHeading")}</p>
               <p className="mt-0.5 text-xs text-zinc-500">{t("accountsHint")}</p>
+              <div className="mt-4">
+                <p className="text-xs font-medium uppercase tracking-wide text-zinc-500">
+                  {t("entryType")}
+                </p>
+                <div className="mt-2 grid grid-cols-3 gap-2">
+                  {(
+                    [
+                      { key: "TRADE", label: t("entryTrade") },
+                      { key: "DEPOSIT", label: t("entryDeposit") },
+                      { key: "WITHDRAWAL", label: t("entryWithdrawal") },
+                    ] as const
+                  ).map((row) => (
+                    <button
+                      key={row.key}
+                      type="button"
+                      onClick={() => {
+                        setEntryKind(row.key);
+                        setStep(1);
+                        setError(null);
+                      }}
+                      className={`tap-target h-10 rounded-xl border px-3 text-xs font-semibold transition sm:text-sm ${
+                        entryKind === row.key
+                          ? "border-[#9100f2] bg-[#9100f2]/15 text-[#e0b3ff]"
+                          : "border-zinc-700 bg-zinc-950 text-zinc-300"
+                      }`}
+                    >
+                      {row.label}
+                    </button>
+                  ))}
+                </div>
+              </div>
 
               {savedAccounts.length > 0 ? (
                 <>
@@ -618,59 +722,98 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
               exit="exit"
               transition={{ duration: 0.2 }}
             >
-              <div className="flex flex-col gap-0.5">
-                <p className="text-sm text-zinc-400">{t("sessionHeading")}</p>
-                <p className="text-xs text-zinc-500">{todayLabel}</p>
-              </div>
-              <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:gap-3">
-                {SESSION_PRESET_DEFS.map((s) => (
-                  <button
-                    key={s.storageId}
-                    type="button"
-                    disabled={useManualSession}
-                    onClick={() => {
-                      setSessionPreset(s.storageId);
-                      setUseManualSession(false);
-                    }}
-                    className={`tap-target flex w-full flex-col gap-1 rounded-xl border px-4 py-3 text-left transition sm:min-h-[5.5rem] ${
-                      !useManualSession && sessionPreset === s.storageId
-                        ? "border-[#9100f2] bg-[#9100f2]/15 text-[#e0b3ff]"
-                        : "border-zinc-700 bg-zinc-950 text-zinc-300"
-                    } disabled:opacity-40`}
-                  >
-                    <span className="text-sm font-semibold">
-                      <span className="mr-2" aria-hidden>
-                        {s.emoji}
-                      </span>
-                      {t(s.titleKey)}
-                    </span>
-                    <span className="text-[11px] leading-snug text-zinc-500">
-                      {t(s.hoursKey)}
-                    </span>
-                  </button>
-                ))}
-              </div>
-              <label className="mt-5 flex items-center gap-3 text-sm text-zinc-300">
-                <input
-                  type="checkbox"
-                  checked={useManualSession}
-                  onChange={(e) => setUseManualSession(e.target.checked)}
-                  className="size-4 accent-[#9100f2]"
-                />
-                {t("manualTime")}
-              </label>
-              {useManualSession && (
-                <input
-                  type="datetime-local"
-                  value={manualTime}
-                  onChange={(e) => setManualTime(e.target.value)}
-                  className="mt-3 h-12 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-zinc-100"
-                />
+              {isTradeFlow ? (
+                <>
+                  <div className="flex flex-col gap-0.5">
+                    <p className="text-sm text-zinc-400">{t("sessionHeading")}</p>
+                    <p className="text-xs text-zinc-500">{todayLabel}</p>
+                  </div>
+                  <div className="mt-3 grid gap-2 sm:grid-cols-2 sm:gap-3">
+                    {SESSION_PRESET_DEFS.map((s) => (
+                      <button
+                        key={s.storageId}
+                        type="button"
+                        disabled={useManualSession}
+                        onClick={() => {
+                          setSessionPreset(s.storageId);
+                          setUseManualSession(false);
+                        }}
+                        className={`tap-target flex w-full flex-col gap-1 rounded-xl border px-4 py-3 text-left transition sm:min-h-[5.5rem] ${
+                          !useManualSession && sessionPreset === s.storageId
+                            ? "border-[#9100f2] bg-[#9100f2]/15 text-[#e0b3ff]"
+                            : "border-zinc-700 bg-zinc-950 text-zinc-300"
+                        } disabled:opacity-40`}
+                      >
+                        <span className="text-sm font-semibold">
+                          <span className="mr-2" aria-hidden>
+                            {s.emoji}
+                          </span>
+                          {t(s.titleKey)}
+                        </span>
+                        <span className="text-[11px] leading-snug text-zinc-500">
+                          {t(s.hoursKey)}
+                        </span>
+                      </button>
+                    ))}
+                  </div>
+                  <label className="mt-5 flex items-center gap-3 text-sm text-zinc-300">
+                    <input
+                      type="checkbox"
+                      checked={useManualSession}
+                      onChange={(e) => setUseManualSession(e.target.checked)}
+                      className="size-4 accent-[#9100f2]"
+                    />
+                    {t("manualTime")}
+                  </label>
+                  {useManualSession && (
+                    <input
+                      type="datetime-local"
+                      value={manualTime}
+                      onChange={(e) => setManualTime(e.target.value)}
+                      className="mt-3 h-12 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-zinc-100"
+                    />
+                  )}
+                </>
+              ) : (
+                <>
+                  <p className="text-sm text-zinc-400">
+                    {entryKind === "DEPOSIT"
+                      ? t("depositAmount")
+                      : t("withdrawAmount")}
+                  </p>
+                  <label className="mt-3 block text-sm text-zinc-400">
+                    {t("amountUsd")}
+                    <input
+                      inputMode="decimal"
+                      value={cashAmount}
+                      onChange={(e) => setCashAmount(e.target.value)}
+                      className="mt-1.5 h-12 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 font-mono text-zinc-100"
+                    />
+                  </label>
+                  <label className="mt-3 block text-sm text-zinc-400">
+                    {t("entryDate")}
+                    <input
+                      type="date"
+                      value={cashDate}
+                      onChange={(e) => setCashDate(e.target.value)}
+                      className="mt-1.5 h-12 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-zinc-100"
+                    />
+                  </label>
+                  <label className="mt-3 block text-sm text-zinc-400">
+                    {t("noteOptional")}
+                    <input
+                      value={cashNote}
+                      onChange={(e) => setCashNote(e.target.value)}
+                      maxLength={280}
+                      className="mt-1.5 h-12 w-full rounded-xl border border-zinc-700 bg-zinc-950 px-3 text-zinc-100"
+                    />
+                  </label>
+                </>
               )}
             </motion.div>
           )}
 
-          {step === 3 && (
+          {isTradeFlow && step === 3 && (
             <motion.div
               key="s-pair"
               variants={stepVariants}
@@ -731,7 +874,7 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
             </motion.div>
           )}
 
-          {step === 4 && (
+          {isTradeFlow && step === 4 && (
             <motion.div
               key="s-prices"
               variants={stepVariants}
@@ -780,7 +923,7 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
             </motion.div>
           )}
 
-          {step === 5 && (
+          {isTradeFlow && step === 5 && (
             <motion.div
               key="s-lot"
               variants={stepVariants}
@@ -841,7 +984,7 @@ export function AddTradeStepper({ onSaved }: { onSaved: () => void }) {
               {t("back")}
             </button>
           )}
-          {step < 5 ? (
+          {step < totalSteps ? (
             !(step === 1 && savedAccounts.length > 0) && (
               <button
                 type="button"

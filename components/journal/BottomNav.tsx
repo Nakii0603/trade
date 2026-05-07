@@ -3,7 +3,7 @@
 import { useLanguage } from "@/lib/i18n/LanguageProvider";
 import { SHELL, SHELL_PAD_X } from "@/lib/layoutShell";
 
-type Tab = "add" | "analytics";
+type Tab = "add" | "analytics" | "cashflow";
 
 export function BottomNav({
   active,
@@ -45,6 +45,16 @@ export function BottomNav({
             ◎
           </span>
           {t("navAnalytics")}
+        </button>
+        <button
+          type="button"
+          className={`${btn} ${active === "cashflow" ? activeCls : idleCls}`}
+          onClick={() => onChange("cashflow")}
+        >
+          <span className="text-xl" aria-hidden>
+            ◍
+          </span>
+          {t("navCashflow")}
         </button>
       </div>
     </nav>
